@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>IMAX Theater — WebXR</title>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #03040a; height: 100%; }
+    canvas { display: block; }
+    #ui {
+      position: fixed; top: 14px; left: 14px; z-index: 10;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #cfe0ff; user-select: none;
+    }
+    #ui h1 {
+      margin: 0 0 2px; font-size: 15px; letter-spacing: 0.24em; font-weight: 800;
+      color: #7fb2ff; text-shadow: 0 0 14px rgba(60, 130, 255, 0.8);
+    }
+    #ui .sub { font-size: 11px; opacity: 0.65; margin-bottom: 10px; }
+    #ui .row { display: flex; gap: 6px; flex-wrap: wrap; }
+    #ui button, #ui label.btn {
+      background: rgba(16, 26, 54, 0.72); color: #cfe0ff;
+      border: 1px solid rgba(90, 140, 255, 0.35); border-radius: 8px;
+      padding: 7px 11px; font-size: 12px; cursor: pointer; backdrop-filter: blur(6px);
+    }
+    #ui button:hover, #ui label.btn:hover { background: rgba(30, 50, 100, 0.85); }
+    #viewName { font-size: 11px; opacity: 0.8; margin-top: 8px; }
+    #ui input[type=file] { display: none; }
+    .vrbtn { font-family: system-ui, sans-serif !important; }
+    #help {
+      position: fixed; bottom: 14px; left: 14px; z-index: 10; font-size: 11px;
+      color: #8fa3cc; opacity: 0.75; font-family: system-ui, sans-serif; line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>IMAX&nbsp;THEATER</h1>
+    <div class="sub">WebXR &middot; Meta Quest optimized</div>
+    <div class="row">
+      <button id="seatBtn">Change seat</button>
+      <label class="btn" for="videoInput">Play a movie&hellip;</label>
+      <input id="videoInput" type="file" accept="video/*" />
+      <button id="ambientBtn">Ambient screen</button>
+      <button id="exportBtn">Export .glb</button>
+    </div>
+    <div id="viewName"></div>
+  </div>
+  <div id="help">
+    Drag to look &middot; scroll to zoom &middot; V or 1&ndash;3 to switch seats<br/>
+    In VR: trigger / squeeze to change seat
+  </div>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
