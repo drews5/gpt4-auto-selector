@@ -1,61 +1,109 @@
-# IMAX-Style Movie Theater — 3D Model (WebXR / Meta Quest)
+# IMAX 15/70 Auditorium — 3D Model (WebXR, built for Quest 3)
 
-A photoreal-styled IMAX auditorium built procedurally with Three.js, modeled
-after reference photos: 10 curved tiers of plush recliners (163 seats), warm
-oak aisle flooring with blue step lights, vertical LED strip walls, a glowing
-IMAX logotype, stage uplights, a projection beam, and a giant 19.5 m curved
-screen playing an ambient "trailer" shader — or your own video file.
+A true large-format IMAX **GT** house, modelled after the real 15-perf/70 mm
+venues (AMC Lincoln Square, BFI IMAX, Melbourne, Cinesphere) rather than a
+digital multiplex screen. The defining features of an actual 70 mm house are
+all here:
 
-![Sweet spot view](previews/sweet-spot.png)
-![Looking back](previews/looking-back.png)
+- **A 26 × 18.2 m screen at 1.43:1** — the native 15/70 frame ratio, nearly
+  square, filling the entire front wall with only a metre of black surround
+  each side. Slightly curved (55 m radius), in a black cylindrical surround
+  with a velvet masking frame.
+- **A 25° seating rake.** Sixteen tiers, 0.52 m of rise per row, so the screen
+  overfills the field of view from every seat. From the reference seat the
+  picture subtends about 48° vertically and 72° horizontally; from row B it is
+  past the edges of your vision entirely.
+- **A 9.5 m throw to the front row** — the short-throw geometry that makes
+  IMAX IMAX, with the screen sill barely above the front-row floor.
+- **392 fixed high-back seats**, not recliners: upholstered pan and back,
+  moulded rear shell, slim shared armrests with recessed cupholders, in three
+  blocks split by two stepped aisles.
+- **IMAX-steep aisles** — 26 cm risers, two steps per row, LED step lights,
+  metal nosings and handrails on both sides of both aisles.
+- Vertical acoustic diffuser fins down the side walls, a coffered acoustic
+  ceiling deck sloping from 23 m down to 16.5 m, surround loudspeaker clusters,
+  raking blue cove lighting, illuminated row placards A–P, and the 15/70
+  projection booth with its port glass and lens.
+
+![Reference seat, row J](previews/row-j-reference-seat.png)
+![The house](previews/house-wide.png)
+![Seating rake](previews/seating-rake.png)
 
 ## Run it
 
-Any static file server works (ES modules need http, not file://):
+ES modules need to be served over HTTP, not opened from disk:
 
 ```bash
 cd theater
 python3 -m http.server 8080
-# open http://localhost:8080
+# then open http://localhost:8080
 ```
 
-- **Desktop:** drag to look, scroll to zoom, `V` or `1–3` to switch seats.
-- **Meta Quest:** open the URL in the Quest browser (serve over HTTPS or use
-  `adb reverse tcp:8080 tcp:8080`), then press **Enter VR**. Trigger or
-  squeeze cycles between seats.
-- **Play a movie:** click *Play a movie…* and pick any local video file — it
-  plays on the screen with correct color. *Ambient screen* switches back.
+**On Quest 3** open the URL in the headset browser and press *Enter VR*. Serve
+over HTTPS, or tunnel with `adb reverse tcp:8080 tcp:8080`, or enable GitHub
+Pages on this repo and open the `theater/` URL directly.
 
-## Quest performance notes
+| | |
+|---|---|
+| **Point and click a seat** | Aim a controller at any seat and pull the trigger to sit there. A reticle previews the seat under your pointer. Grip cycles the preset seats. |
+| **Desktop** | Click any seat to sit in it, drag to look, scroll to zoom, `1`–`4` for preset seats, `V` to cycle. |
+| **Watch something** | *Load a film…* puts any local video file on the screen — and the house lighting follows it, because the picture is literally the light source. *House reel* returns to the built-in reel. |
+| **Tuning** | `?filmres=768` lowers the projection buffer resolution; `?hideui=1` hides the overlay. |
 
-Built to hold 72–90 fps on Quest hardware:
+## What is on the screen
 
-- All seats are a single `InstancedMesh` (one draw call); every other static
-  material is merged into one mesh per material (~20 draw calls total).
-- Only 4 real lights; every LED, step light, logo and glow is emissive/unlit
-  geometry with additive glow sprites — no shadow maps, no post-processing.
-- All textures are generated procedurally at load (no downloads), and
-  strongest fixed foveation is enabled in XR.
+The projected picture is generated in a shader and rendered into an off-screen
+HDR buffer at **exactly 24 fps** — real film cadence, and it means the cost of
+the (fairly heavy) picture shader does not scale with how much of your view the
+screen fills. Two reels cross-dissolve every 26 seconds: an orbital Earth pass
+with a moving terminator and city lights on the night side, and a deep-field
+nebula. Both get gate weave, per-frame emulsion grain, aperture shading and the
+occasional piece of dust in the gate.
+
+## How it holds frame rate on Quest 3
+
+The picture does the lighting, which is both how a real IMAX house reads and the
+cheapest way to light one:
+
+- **One `RectAreaLight` stands in for the screen.** three.js evaluates it with
+  linearly-transformed cosines, so the falloff and the sheen on the handrails
+  and nosings are physically correct — no shadow maps, no post-processing, no
+  global illumination. Its colour and intensity track the mean of the frame
+  currently on screen.
+- **Contact shading is baked into vertex colours.** Every structural surface is
+  emitted through a quad builder that takes per-corner ambient occlusion, so
+  risers, seat wells and wall junctions have real contact darkening without a
+  single shadow map.
+- **All 392 seats are two instanced draw calls**, and the rest of the house is
+  merged into one mesh per material — 16 static meshes and **174k triangles**
+  for the entire auditorium. A chamfered-box primitive (44 triangles) does the
+  work three's `RoundedBoxGeometry` would spend 300 on.
+- Every LED, step light, cove and sign is unlit emissive geometry. Fixed
+  foveation is on, MSAA is handled by the headset, and geometry is welded and
+  indexed to halve the vertex load.
 
 ## The model file
 
-`imax-theater.glb` (2.4 MB) is a standalone export of the whole auditorium —
-drop it into Blender, Unity, Unreal, or any glTF viewer. Seats are nodes
-sharing one mesh, so the file stays small. The animated screen exports as an
-emissive panel. Re-export any time with the *Export .glb* button.
+`imax-gt-theater.glb` (2.1 MB) is a standalone export of the whole auditorium —
+drop it into Blender, Unity, Unreal or any glTF viewer. Seats become nodes
+sharing one mesh so the file stays small, and the live projection surface
+exports as an emissive panel. Regenerate it any time with *Export .glb*.
 
 ## Files
 
 ```
 theater/
-├── index.html          entry point + UI
-├── imax-theater.glb    exported 3D model (share this!)
+├── index.html              entry point and overlay
+├── imax-gt-theater.glb     exported model
 ├── js/
-│   ├── main.js         renderer, WebXR, controls, video, UI
-│   ├── theater.js      auditorium construction + screen shader
-│   ├── seat.js         recliner seat geometry
-│   ├── textures.js     procedural textures (wood, leather, LED glows…)
-│   └── export.js       GLB exporter
-├── previews/           rendered screenshots
-└── vendor/             three.js r160 (vendored, no CDN needed)
+│   ├── layout.js           house dimensions, row maths, seat picking
+│   ├── auditorium.js       screen, walls, tiers, aisles, booth, lighting
+│   ├── seat.js             the cinema seat, split by material
+│   ├── mesher.js           quad builder with baked AO, chamfered box, welding
+│   ├── textures.js         procedural surfaces — no image assets
+│   ├── film.js             the 24 fps projection buffer and its shader
+│   ├── export.js           glTF export
+│   └── main.js             renderer, WebXR, seat selection, video
+├── previews/               rendered stills
+└── vendor/                 three.js r160, vendored (no CDN needed)
 ```
