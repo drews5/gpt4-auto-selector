@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>IMAX 15/70 Auditorium</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #020306; }
+    canvas { display: block; }
+    #ui, #help {
+      position: fixed; z-index: 10; color: #c8d8f4;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      user-select: none; -webkit-user-select: none;
+    }
+    #ui { top: 16px; left: 16px; }
+    #ui h1 {
+      margin: 0; font-size: 13px; letter-spacing: 0.34em; font-weight: 800;
+      color: #7cb0ff; text-shadow: 0 0 16px rgba(48, 120, 255, 0.75);
+    }
+    #ui .sub { font-size: 10.5px; opacity: 0.55; margin: 3px 0 11px; letter-spacing: 0.06em; }
+    #ui .row { display: flex; gap: 6px; flex-wrap: wrap; max-width: 380px; }
+    #ui button, #ui label.btn {
+      background: rgba(14, 22, 44, 0.72); color: #c8d8f4;
+      border: 1px solid rgba(90, 140, 255, 0.28); border-radius: 7px;
+      padding: 7px 11px; font-size: 12px; cursor: pointer;
+      -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    }
+    #ui button:hover, #ui label.btn:hover { background: rgba(28, 46, 92, 0.88); }
+    #ui input[type=file] { display: none; }
+    #seatLabel { font-size: 11.5px; margin-top: 9px; color: #9dbdf0; }
+    #stats { font-size: 10px; margin-top: 3px; opacity: 0.42; }
+    #help { bottom: 16px; left: 16px; font-size: 10.5px; opacity: 0.5; line-height: 1.7; }
+    .vrbtn { font-family: system-ui, sans-serif !important; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>IMAX&nbsp;&nbsp;15/70</h1>
+    <div class="sub">GT auditorium &middot; WebXR &middot; built for Quest&nbsp;3</div>
+    <div class="row">
+      <button id="nuvioBtn">Browse Nuvio</button>
+      <button id="seatBtn">Next seat</button>
+      <label class="btn" for="videoInput">Load a film&hellip;</label>
+      <input id="videoInput" type="file" accept="video/*" />
+      <button id="reelBtn">House reel</button>
+      <button id="exportBtn">Export .glb</button>
+    </div>
+    <div id="seatLabel"></div>
+    <div id="stats"></div>
+  </div>
+  <div id="help">
+    Click any seat to sit in it &middot; drag to look &middot; scroll to zoom &middot; 1&ndash;4 for preset seats &middot; <b>B</b> Nuvio &middot; <b>C</b> console<br />
+    In VR: point at a seat and pull the trigger to move there &middot; grip cycles presets &middot; the console rides your left wrist
+  </div>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
