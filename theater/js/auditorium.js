@@ -1,6 +1,6 @@
-// The house: curved 1.43:1 screen in a black cylindrical surround, sixteen
-// tiers raked at ~25 degrees, twin stepped aisles with handrails, acoustic
-// diffuser fins, surround clusters, and the 15/70 projection booth.
+// The house: a 97 x 76 ft curved screen in a black cylindrical surround,
+// twenty tiers raked at ~25 degrees, twin stepped aisles with handrails,
+// acoustic diffuser fins, surround clusters, and the 15/70 projection booth.
 //
 // Lighting is dominated by a single RectAreaLight standing in for the screen,
 // which is how a real IMAX house actually reads — almost every surface you see
@@ -142,7 +142,7 @@ export function buildAuditorium(tex, film) {
     }
     // acoustic diffuser fins
     const finDepth = 0.42;
-    for (let z = 4.0; z < R.backZ - 2.4; z += 1.22) {
+    for (let z = 4.0; z < R.backZ - 2.6; z += 1.30) {
       const base = floorYAt(z) + 0.35;
       const top = ceilingY(z) - 1.6;
       if (top - base < 1.5) continue;
@@ -340,14 +340,14 @@ export function buildAuditorium(tex, film) {
   // Surround loudspeaker clusters.
   // ==========================================================================
   for (const side of [-1, 1]) {
-    for (const z of [7.5, 14.5, 21.5, 27.0]) {
-      const y = floorYAt(z) + 5.4;
+    for (const z of [8.5, 15.5, 22.5, 29.0, 34.5]) {
+      const y = floorYAt(z) + 6.4;
       const x = side * (R.halfWidth - 0.5);
       grille.box([Math.min(x, x - side * 0.62), y, z], [Math.max(x, x - side * 0.62), y + 1.7, z + 1.25],
         { uvScale: 0.9, tint: [0.55, 0.57, 0.64], ao: [0.7, 0.7, 1, 1] });
     }
   }
-  for (const x of [-7.5, -3.0, 3.0, 7.5]) {
+  for (const x of [-9.0, -3.6, 3.6, 9.0]) {
     grille.box([x - 0.8, backY - 3.4, R.backZ - 0.75], [x + 0.8, backY - 1.9, R.backZ],
       { uvScale: 0.9, tint: [0.5, 0.52, 0.6] });
   }
@@ -373,7 +373,7 @@ export function buildAuditorium(tex, film) {
   // ==========================================================================
   // Cove lighting: a raking line of blue up each side wall.
   // ==========================================================================
-  const coveZ0 = 6.5, coveZ1 = rowZ(LAST) + TIER_HALF;
+  const coveZ0 = 8.0, coveZ1 = rowZ(LAST) + TIER_HALF;
   for (const side of [-1, 1]) {
     const x = side * (R.halfWidth - 0.03);
     const steps = 24;
@@ -512,11 +512,11 @@ export function buildAuditorium(tex, film) {
   }
   {
     const parts = [];
-    const back = new THREE.PlaneGeometry(6.0, 1.5);
+    const back = new THREE.PlaneGeometry(7.2, 1.8);
     transform(back, 0, backY - 5.6, R.backZ - 0.06, 0, Math.PI, 0);
     parts.push(back);
     for (const side of [-1, 1]) {
-      const g = new THREE.PlaneGeometry(4.4, 1.1);
+      const g = new THREE.PlaneGeometry(5.4, 1.35);
       transform(g, side * (R.halfWidth - 0.06), ceilingY(4.0) - 3.2, 4.0,
         0, side < 0 ? Math.PI / 2 : -Math.PI / 2, 0);
       parts.push(g);
@@ -597,8 +597,8 @@ export function buildAuditorium(tex, film) {
   group.add(hemi);
 
   const bounceLights = [];
-  for (const z of [13.0, 20.0, 27.0]) {
-    const l = new THREE.PointLight(0xffffff, 6.0, 26, 1.6);
+  for (const z of [15.0, 23.0, 31.0]) {
+    const l = new THREE.PointLight(0xffffff, 6.0, 30, 1.6);
     l.position.set(0, ceilingY(z) - 2.4, z);
     group.add(l);
     bounceLights.push(l);
@@ -606,8 +606,8 @@ export function buildAuditorium(tex, film) {
 
   const coveLights = [];
   for (const side of [-1, 1]) {
-    for (const z of [11.0, 17.0, 23.0]) {
-      const l = new THREE.PointLight(0x3a6cff, 9.0, 15, 2.0);
+    for (const z of [14.0, 22.0, 30.0]) {
+      const l = new THREE.PointLight(0x3a6cff, 9.0, 16, 2.0);
       l.position.set(side * (R.halfWidth - 1.2), floorYAt(z) + 2.7, z);
       group.add(l);
       coveLights.push(l);

@@ -5,7 +5,7 @@ import { RectAreaLightUniformsLib } from '../vendor/RectAreaLightUniformsLib.js'
 import { buildTextures } from './textures.js';
 import { Film } from './film.js';
 import { buildAuditorium } from './auditorium.js';
-import { SPEC, rowSeatXs, rowY, rowZ, pickSeat, screenMidY } from './layout.js';
+import { SPEC, SCREEN_ASPECT, rowSeatXs, rowY, rowZ, pickSeat, screenMidY } from './layout.js';
 import { exportGLB } from './export.js';
 
 // ----------------------------------------------------------------- renderer
@@ -34,7 +34,7 @@ const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerH
 const qs = new URLSearchParams(location.search);
 const textures = buildTextures(SPEC.seating.rows);
 // 1536 across is the sweet spot on Quest 3; drop it for weaker GPUs.
-const film = new Film(renderer, Number(qs.get('filmres')) || 1536);
+const film = new Film(renderer, Number(qs.get('filmres')) || 1536, SCREEN_ASPECT);
 film.update(1);                                   // strike frame one before first draw
 const house = buildAuditorium(textures, film);
 scene.add(house.group);
@@ -61,11 +61,13 @@ function seatInRow(row, offsetFromCentre = 0) {
   return { row, index: bi, x: xs[bi], y: rowY(row), z: rowZ(row) };
 }
 
+const LAST_ROW = SPEC.seating.rows - 1;
+const rowName = (i) => String.fromCharCode(65 + i);
 const PRESETS = [
-  { name: 'Row J — reference seat', seat: seatInRow(9, 0) },
-  { name: 'Row B — front of house', seat: seatInRow(1, 0) },
-  { name: 'Row P — back row', seat: seatInRow(15, 0) },
-  { name: 'Row G — off centre', seat: seatInRow(6, 5.2) },
+  { name: `Row ${rowName(11)} — reference seat`, seat: seatInRow(11, 0) },
+  { name: `Row ${rowName(1)} — front of house`, seat: seatInRow(1, 0) },
+  { name: `Row ${rowName(LAST_ROW)} — back row`, seat: seatInRow(LAST_ROW, 0) },
+  { name: `Row ${rowName(7)} — off centre`, seat: seatInRow(7, 6.4) },
 ];
 
 let currentSeat = PRESETS[0].seat;

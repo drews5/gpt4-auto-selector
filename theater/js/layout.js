@@ -7,38 +7,43 @@
 
 export const SPEC = {
   screen: {
-    width: 26.0,
-    height: 18.19,        // 26 / 1.43 — the native 15/70 frame ratio
-    bottom: 1.50,         // sill height above the front-row floor
-    curveRadius: 55.0,    // GT screens are only slightly curved
-    border: 0.55,         // black masking frame
+    // AMC Lincoln Square: 97 ft x 76 ft — the largest 15/70 screen in the US.
+    // Note this is 1.276:1, taller than the 1.43:1 film frame; the physical
+    // sheet is what's modelled here and the picture fills all of it.
+    width: 29.566,        // 97 ft
+    height: 23.165,       // 76 ft
+    bottom: 1.60,         // sill height above the front-row floor
+    curveRadius: 62.0,    // GT screens are only slightly curved
+    border: 0.65,         // black masking frame
   },
   room: {
-    halfWidth: 14.0,      // screen leaves only 1 m of wall each side
-    frontZ: -2.4,         // wall behind the screen (speaker chamber)
-    backZ: 31.0,
-    heightFront: 23.0,    // ceiling slopes down toward the booth
-    heightBack: 16.5,
+    halfWidth: 16.0,      // screen leaves ~1.2 m of wall each side
+    frontZ: -2.8,         // wall behind the screen (speaker chamber)
+    backZ: 38.0,
+    heightFront: 29.0,    // ceiling slopes down toward the booth
+    heightBack: 20.0,
   },
   seating: {
-    rows: 16,
-    firstRowZ: 9.5,
-    rowPitch: 1.12,
-    rowRise: 0.52,        // atan(0.52/1.12) = 24.9 deg rake
+    rows: 20,
+    firstRowZ: 11.0,      // ~0.47 screen heights: IMAX short throw
+    rowPitch: 1.14,
+    rowRise: 0.53,        // atan(0.53/1.14) = 24.9 deg rake
     seatPitch: 0.62,
-    halfWidth0: 7.0,      // seating block fans out toward the back
-    halfWidthGrow: 0.36,
+    halfWidth0: 8.0,      // seating block fans out toward the back
+    halfWidthGrow: 0.34,
     aisleFrac: 0.40,      // inner edge of each aisle, as a fraction of halfWidth
-    aisleWidth: 1.30,
-    stepsPerRow: 3,
+    aisleWidth: 1.34,
   },
   booth: {
-    z: 31.0,
-    portY: 12.6,
-    portW: 3.0,
-    portH: 2.2,
+    z: 38.0,
+    portY: 15.5,
+    portW: 3.4,
+    portH: 2.4,
   },
 };
+
+// Physical aspect of the screen sheet, used by the projection buffer.
+export const SCREEN_ASPECT = SPEC.screen.width / SPEC.screen.height;
 
 const S = SPEC.seating;
 

@@ -5,27 +5,28 @@ venues (AMC Lincoln Square, BFI IMAX, Melbourne, Cinesphere) rather than a
 digital multiplex screen. The defining features of an actual 70 mm house are
 all here:
 
-- **A 26 × 18.2 m screen at 1.43:1** — the native 15/70 frame ratio, nearly
-  square, filling the entire front wall with only a metre of black surround
-  each side. Slightly curved (55 m radius), in a black cylindrical surround
-  with a velvet masking frame.
-- **A 25° seating rake.** Sixteen tiers, 0.52 m of rise per row, so the screen
+- **A 97 × 76 ft screen (29.6 × 23.2 m)** — the dimensions of the AMC Lincoln
+  Square screen, the largest 15/70 sheet in the United States. It fills the
+  entire 32 m front wall with barely a metre of black surround each side,
+  slightly curved on a 62 m radius, inside a velvet masking frame.
+- **A 25° seating rake.** Twenty tiers, 0.53 m of rise per row, so the screen
   overfills the field of view from every seat. From the reference seat the
-  picture subtends about 48° vertically and 72° horizontally; from row B it is
-  past the edges of your vision entirely.
-- **A 9.5 m throw to the front row** — the short-throw geometry that makes
-  IMAX IMAX, with the screen sill barely above the front-row floor.
-- **392 fixed high-back seats**, not recliners: upholstered pan and back,
+  picture subtends about 50° vertically and 68° horizontally; from row B it is
+  116° wide and 67° tall — past the edges of your vision in every direction.
+- **An 11 m throw to the front row** — under half a screen height, the
+  short-throw geometry that makes IMAX IMAX, with the sill barely above the
+  front-row floor.
+- **591 fixed high-back seats**, not recliners: upholstered pan and back,
   moulded rear shell, slim shared armrests with recessed cupholders, in three
-  blocks split by two stepped aisles.
-- **IMAX-steep aisles** — 26 cm risers, two steps per row, LED step lights,
+  blocks split by two stepped aisles. Lincoln Square seats about 590.
+- **IMAX-steep aisles** — 27 cm risers, two steps per row, LED step lights,
   metal nosings and handrails on both sides of both aisles.
 - Vertical acoustic diffuser fins down the side walls, a coffered acoustic
-  ceiling deck sloping from 23 m down to 16.5 m, surround loudspeaker clusters,
-  raking blue cove lighting, illuminated row placards A–P, and the 15/70
+  ceiling deck sloping from 29 m down to 20 m, surround loudspeaker clusters,
+  raking blue cove lighting, illuminated row placards A–T, and the 15/70
   projection booth with its port glass and lens.
 
-![Reference seat, row J](previews/row-j-reference-seat.png)
+![Reference seat, row L](previews/row-l-reference-seat.png)
 ![The house](previews/house-wide.png)
 ![Seating rake](previews/seating-rake.png)
 
@@ -74,8 +75,8 @@ cheapest way to light one:
   emitted through a quad builder that takes per-corner ambient occlusion, so
   risers, seat wells and wall junctions have real contact darkening without a
   single shadow map.
-- **All 392 seats are two instanced draw calls**, and the rest of the house is
-  merged into one mesh per material — 16 static meshes and **174k triangles**
+- **All 591 seats are two instanced draw calls**, and the rest of the house is
+  merged into one mesh per material — 16 static meshes and **261k triangles**
   for the entire auditorium. A chamfered-box primitive (44 triangles) does the
   work three's `RoundedBoxGeometry` would spend 300 on.
 - Every LED, step light, cove and sign is unlit emissive geometry. Fixed
@@ -84,7 +85,7 @@ cheapest way to light one:
 
 ## The model file
 
-`imax-gt-theater.glb` (2.1 MB) is a standalone export of the whole auditorium —
+`imax-gt-theater.glb` (2.9 MB) is a standalone export of the whole auditorium —
 drop it into Blender, Unity, Unreal or any glTF viewer. Seats become nodes
 sharing one mesh so the file stays small, and the live projection surface
 exports as an emissive panel. Regenerate it any time with *Export .glb*.

@@ -203,9 +203,9 @@ void main() {
 `;
 
 export class Film {
-  constructor(renderer, width = 1536) {
+  constructor(renderer, width = 1536, aspect = 1.43) {
     this.renderer = renderer;
-    const height = Math.round(width / 1.43);
+    const height = Math.round(width / aspect);
     this.target = new THREE.WebGLRenderTarget(width, height, {
       type: THREE.HalfFloatType,
       minFilter: THREE.LinearFilter,
@@ -218,7 +218,7 @@ export class Film {
       uTime: { value: 0 },
       uWeave: { value: new THREE.Vector2() },
       uFrame: { value: 0 },
-      uAspect: { value: 1.43 },
+      uAspect: { value: aspect },
     };
     this.material = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
