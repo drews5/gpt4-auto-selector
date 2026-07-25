@@ -47,9 +47,38 @@ Pages on this repo and open the `theater/` URL directly.
 | | |
 |---|---|
 | **Point and click a seat** | Aim a controller at any seat and pull the trigger to sit there. A reticle previews the seat under your pointer. Grip cycles the preset seats. |
-| **Desktop** | Click any seat to sit in it, drag to look, scroll to zoom, `1`–`4` for preset seats, `V` to cycle. |
-| **Watch something** | *Load a film…* puts any local video file on the screen — and the house lighting follows it, because the picture is literally the light source. *House reel* returns to the built-in reel. |
+| **Desktop** | Click any seat to sit in it, drag to look, scroll to zoom, `1`–`4` for preset seats, `V` to cycle, `B` Nuvio, `C` console. |
+| **Watch something** | *Browse Nuvio* to search and play a stream, or *Load a film…* for any local video file — the house lighting follows either, because the picture is literally the light source. *House reel* returns to the built-in reel. |
+| **In VR** | The console rides your **left wrist** so it never sits between you and the screen; point the other controller at it. The Nuvio browser opens in front of you on entry when nothing is loaded. |
 | **Tuning** | `?filmres=768` lowers the projection buffer resolution; `?hideui=1` hides the overlay. |
+
+## Watching Nuvio
+
+Nuvio is a client for the Stremio addon protocol — plain CORS-enabled JSON over
+HTTPS — so the theater speaks that protocol directly instead of trying to embed
+a web page. *Browse Nuvio* searches the catalogue, picks a season and episode,
+resolves playable streams from your configured addons, and puts the result on
+the screen.
+
+The stream sources are whatever you point it at (`js/nuvio.js`, overridable at
+runtime and stored in `localStorage`), defaulting to the public Nuvio Streams
+instance. Add your own deployment to merge more results in.
+
+Two limits worth stating plainly, because neither is fixable in any VR app:
+a browser may never paint another origin's page into WebGL, so an embedded
+Chrome or a Nuvio *web page* on the screen is impossible — talking to the same
+stream sources is the way to get the same content. And a file host that does
+not send CORS headers cannot be read back for texturing, so if one stream
+refuses to start, take the next one in the list.
+
+## Sound
+
+A 12-channel virtual bed — screen L/C/R plus LFE, side surrounds, rear
+surrounds and four ceiling channels — placed at real positions in this house
+and rendered through HRTF panners, with the listener locked to your head. A
+stereo source is matrix-upmixed (centre sum, phase-derived surrounds,
+low-passed LFE, decorrelated heights); a genuine 5.1 stream is detected and
+routed discretely instead.
 
 ## What is on the screen
 
@@ -71,6 +100,12 @@ cheapest way to light one:
   and nosings are physically correct — no shadow maps, no post-processing, no
   global illumination. Its colour and intensity track the mean of the frame
   currently on screen.
+- **Four quadrant lights carry the direction.** An area light has only one
+  colour, so on its own a frame that is red on the left and blue on the right
+  washes the whole house an even purple. Four point lights hang in front of the
+  screen quadrants, each taking the colour of its own patch of picture, so the
+  light arrives from the side it is actually coming from — the left wall goes
+  red while the right wall goes blue, as it would in a real house.
 - **Contact shading is baked into vertex colours.** Every structural surface is
   emitted through a quad builder that takes per-corner ambient occlusion, so
   risers, seat wells and wall junctions have real contact darkening without a
@@ -103,6 +138,10 @@ theater/
 │   ├── mesher.js           quad builder with baked AO, chamfered box, welding
 │   ├── textures.js         procedural surfaces — no image assets
 │   ├── film.js             the 24 fps projection buffer and its shader
+│   ├── nuvio.js            Stremio addon protocol — search, episodes, streams
+│   ├── browser.js          in-VR content browser (ray keyboard, results)
+│   ├── console.js          wrist-docked control panel
+│   ├── audio.js            12-channel virtual speaker rig
 │   ├── export.js           glTF export
 │   └── main.js             renderer, WebXR, seat selection, video
 ├── previews/               rendered stills

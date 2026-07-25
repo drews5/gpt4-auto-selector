@@ -596,12 +596,25 @@ export function buildAuditorium(tex, film) {
   const hemi = new THREE.HemisphereLight(0x3d5a8c, 0x141008, 0.9);
   group.add(hemi);
 
+  // Directional screen bounce. The RectAreaLight above carries the correct
+  // area falloff but only one colour, so a frame that is red on the left and
+  // blue on the right would wash the whole house an even purple. These four
+  // lights hang in front of the screen quadrants and each take the colour of
+  // their own patch of picture, so light arrives from the direction it is
+  // actually coming from — the way it does in a real house.
   const bounceLights = [];
-  for (const z of [15.0, 23.0, 31.0]) {
-    const l = new THREE.PointLight(0xffffff, 6.0, 30, 1.6);
-    l.position.set(0, ceilingY(z) - 2.4, z);
-    group.add(l);
-    bounceLights.push(l);
+  {
+    const qx = SC.width * 0.26;
+    const qy = SC.height * 0.24;
+    const mid = screenMidY();
+    for (const [sx, sy] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+      // Near-linear falloff over the full 38 m house: with physical decay
+      // these would be buried by the area light within a few rows.
+      const l = new THREE.PointLight(0xffffff, 30.0, 95, 1.0);
+      l.position.set(sx * qx, mid + sy * qy, 4.5);
+      group.add(l);
+      bounceLights.push(l);
+    }
   }
 
   const coveLights = [];
@@ -619,6 +632,7 @@ export function buildAuditorium(tex, film) {
   // ==========================================================================
   const tmpColor = new THREE.Color();
   const NEUTRAL = new THREE.Color(1, 1, 1);
+  let bounceScale = 1.0;          // user "bounce" trim from the console
   function update() {
     const level = film.averageLevel;
     screenLight.color.copy(film.averageColor).lerp(NEUTRAL, 0.22);
@@ -627,9 +641,18 @@ export function buildAuditorium(tex, film) {
     tmpColor.copy(film.averageColor).lerp(NEUTRAL, 0.60);
     hemi.color.copy(tmpColor);
     hemi.intensity = 0.06 + level * 0.22;
-    for (const l of bounceLights) {
-      l.color.copy(tmpColor);
-      l.intensity = 0.4 + level * 2.3;
+    // Each quadrant light keeps more of its own chroma than the ambient fill
+    // does — that colour separation across the room is the whole point.
+    for (let i = 0; i < bounceLights.length; i++) {
+      const l = bounceLights[i];
+      const z = film.zones?.[i];
+      if (z) {
+        l.color.copy(z.color).lerp(NEUTRAL, 0.18);
+        l.intensity = (3.0 + z.level * 78.0) * bounceScale;
+      } else {
+        l.color.copy(tmpColor);
+        l.intensity = (3.0 + level * 70.0) * bounceScale;
+      }
     }
     beamMat.opacity = 0.014 + level * 0.05;
   }
@@ -648,6 +671,7 @@ export function buildAuditorium(tex, film) {
     screenMaterial: screenMat,
     seatMeshes,
     update,
+    setBounce: (v) => { bounceScale = Math.max(0, Math.min(2.5, v)); },
     stats: { seats: seats.length, triangles: Math.round(triangles), drawCalls: group.children.filter((c) => c.isMesh).length },
   };
 }

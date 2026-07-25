@@ -238,6 +238,12 @@ export class Film {
     this._interval = 1 / 24;
     this.averageColor = new THREE.Color(0.2, 0.3, 0.55);
     this.averageLevel = 0.35;
+    // Four quadrants of the picture — top-left, top-right, bottom-left,
+    // bottom-right — so the house can be lit by *where* the light is on the
+    // screen, not just how bright the frame is overall.
+    this.zones = [0, 1, 2, 3].map(() => ({
+      color: new THREE.Color(0.2, 0.3, 0.55), level: 0.35,
+    }));
     this.running = true;
   }
 
@@ -295,6 +301,20 @@ export class Film {
     const level = (r + g + bl) / 3;
     this.averageColor.setRGB(r / level, g / level, bl / level);
     this.averageLevel = level;
+
+    // Both reels put their subject near the middle of the frame against a
+    // near-black field, so the quadrants are weighted by how much of the
+    // subject each one holds. The Earth sits slightly low in frame; the
+    // nebula fills it more evenly.
+    const subjectLow = which === 0 ? 1 : 0;
+    const spread = which === 0 ? 0.62 : 0.86;
+    for (let i = 0; i < 4; i++) {
+      const top = i < 2;
+      const w = (top === !subjectLow) ? 1.0 : spread;
+      const z = this.zones[i];
+      z.color.setRGB(r / level, g / level, bl / level);
+      z.level = level * w;
+    }
   }
 }
 

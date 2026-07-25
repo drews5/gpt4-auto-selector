@@ -7,6 +7,9 @@ import { Film } from './film.js';
 import { buildAuditorium } from './auditorium.js';
 import { SPEC, SCREEN_ASPECT, rowSeatXs, rowY, rowZ, pickSeat, screenMidY } from './layout.js';
 import { exportGLB } from './export.js';
+import { TheaterAudio } from './audio.js';
+import { VRConsole } from './console.js';
+import { VRBrowser } from './browser.js';
 
 // ----------------------------------------------------------------- renderer
 const renderer = new THREE.WebGLRenderer({
@@ -117,11 +120,7 @@ for (let i = 0; i < 2; i++) {
   );
   line.scale.z = 8;
   c.add(line);
-  c.addEventListener('selectstart', () => {
-    const hit = aimSeat(c);
-    if (hit) sit(hit);
-    else usePreset(presetIndex + 1);
-  });
+  c.addEventListener('selectstart', () => onControllerSelect(c));
   c.addEventListener('squeezestart', () => usePreset(presetIndex + 1));
   rig.add(c);
   controllers.push(c);
@@ -150,6 +149,12 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (moved > 6 || renderer.xr.isPresenting) return;
   pointer.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
+  // panels first, then the seat under the cursor
+  for (const p of panels) {
+    if (!p.mesh.visible) continue;
+    const ph = raycaster.intersectObject(p.mesh, false);
+    if (ph.length) { p.press(p.hitTest(ph[0].uv)); return; }
+  }
   const r = raycaster.ray;
   const hit = pickSeat(r.origin.x, r.origin.y, r.origin.z, r.direction.x, r.direction.y, r.direction.z);
   if (hit) sit(hit);
@@ -165,17 +170,31 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 });
 
 // ------------------------------------------------------------------- video
-let videoEl = null;
+// One element for the lifetime of the page: Web Audio can only tap a given
+// media element once, and the 12-channel rig taps this one.
+const videoEl = document.createElement('video');
+videoEl.loop = false;
+videoEl.playsInline = true;
+videoEl.crossOrigin = 'anonymous';
+videoEl.preload = 'auto';
+
+const audio = new TheaterAudio(videoEl);
+const hasSource = () => !!(videoEl.currentSrc || videoEl.src || videoEl.srcObject);
+
 let videoSampler = null;
-function playVideo(src) {
-  if (!videoEl) {
-    videoEl = document.createElement('video');
-    videoEl.loop = true;
-    videoEl.playsInline = true;
-    videoEl.crossOrigin = 'anonymous';
+function playVideo(src, label) {
+  audio.ensureStarted();
+  if (typeof MediaStream !== 'undefined' && src instanceof MediaStream) {
+    videoEl.removeAttribute('src');
+    videoEl.srcObject = src;
+  } else {
+    videoEl.srcObject = null;
+    videoEl.src = typeof src === 'string' ? src : URL.createObjectURL(src);
   }
-  videoEl.src = typeof src === 'string' ? src : URL.createObjectURL(src);
-  videoEl.play().catch(() => { videoEl.muted = true; videoEl.play(); });
+  videoEl.load();
+  videoEl.play().catch(() => {});
+  vrConsole.state.source = label || (typeof src === 'string' ? 'Stream' : src.name || 'Local file');
+  vrConsole.draw();
   const vt = new THREE.VideoTexture(videoEl);
   vt.colorSpace = THREE.SRGBColorSpace;
   house.screenMaterial.map = vt;
@@ -189,8 +208,11 @@ function playVideo(src) {
   videoSampler = { canvas: c, ctx, acc: 0 };
 }
 function stopVideo() {
-  if (videoEl) videoEl.pause();
+  videoEl.pause();
   videoSampler = null;
+  vrConsole.state.source = 'House reel';
+  vrConsole.state.playing = false;
+  vrConsole.draw();
   house.screenMaterial.map = film.texture;
   house.screenMaterial.toneMapped = true;
   house.screenMaterial.needsUpdate = true;
@@ -203,16 +225,147 @@ function sampleVideo(dt) {
   videoSampler.acc = 0;
   const { ctx, canvas } = videoSampler;
   try { ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height); } catch { return; }
-  const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let d;
+  // A cross-origin stream without CORS headers taints the canvas; keep the
+  // last lighting rather than throwing every frame.
+  try { d = ctx.getImageData(0, 0, canvas.width, canvas.height).data; } catch { return; }
+
+  const W = canvas.width, H = canvas.height;
+  const halfW = W >> 1, halfH = H >> 1;
   let r = 0, g = 0, b = 0;
-  for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
-  const n = d.length / 4;
-  // sRGB -> approximate linear
-  r = Math.pow(r / n / 255, 2.2); g = Math.pow(g / n / 255, 2.2); b = Math.pow(b / n / 255, 2.2);
+  // quadrant order matches film.zones / the bounce lights: TL, TR, BL, BR
+  const acc = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const o = (y * W + x) * 4;
+      const q = (y < halfH ? 0 : 2) + (x < halfW ? 0 : 1);
+      const a = acc[q];
+      a[0] += d[o]; a[1] += d[o + 1]; a[2] += d[o + 2]; a[3]++;
+      r += d[o]; g += d[o + 1]; b += d[o + 2];
+    }
+  }
+  const n = W * H;
+  const lin = (v) => Math.pow(v / 255, 2.2);
+  r = lin(r / n); g = lin(g / n); b = lin(b / n);
   const level = Math.max((r + g + b) / 3, 0.001);
   film.averageColor.setRGB(r / level, g / level, b / level);
   film.averageLevel = Math.min(level, 0.9);
+
+  for (let q = 0; q < 4; q++) {
+    const a = acc[q];
+    const zr = lin(a[0] / a[3]), zg = lin(a[1] / a[3]), zb = lin(a[2] / a[3]);
+    const zl = Math.max((zr + zg + zb) / 3, 0.001);
+    const z = film.zones[q];
+    z.color.setRGB(zr / zl, zg / zl, zb / zl);
+    z.level = Math.min(zl, 0.9);
+  }
 }
+
+// ------------------------------------------------------- in-VR panels
+// In VR there is no DOM, so the console and the Nuvio browser are canvases
+// on quads that the controllers point at.
+const vrConsole = new VRConsole(scene, {
+  play: () => {
+    if (!hasSource()) { vrBrowser.mesh.visible = true; vrBrowser.placeInFront(camera); return; }
+    audio.ensureStarted();
+    videoEl.paused ? videoEl.play().catch(() => {}) : videoEl.pause();
+  },
+  seekBack: () => { if (isFinite(videoEl.duration)) videoEl.currentTime = Math.max(0, videoEl.currentTime - 30); },
+  seekFwd: () => { if (isFinite(videoEl.duration)) videoEl.currentTime = Math.min(videoEl.duration, videoEl.currentTime + 30); },
+  volDown: () => { audio.volume -= 0.1; vrConsole.state.volume = audio.volume; vrConsole.draw(); },
+  volUp: () => { audio.volume += 0.1; vrConsole.state.volume = audio.volume; vrConsole.draw(); },
+  browse: () => {
+    vrBrowser.mesh.visible = true;
+    vrBrowser.placeInFront(camera);
+    if (!vrConsole.worn) vrConsole.mesh.visible = false;
+  },
+  seat: () => usePreset(presetIndex + 1),
+  reel: () => stopVideo(),
+  recenter: () => sit(currentSeat),
+  bounceDown: () => { setBounce(bounceTrim - 0.2); },
+  bounceUp: () => { setBounce(bounceTrim + 0.2); },
+});
+
+let bounceTrim = 1.0;
+function setBounce(v) {
+  bounceTrim = Math.max(0, Math.min(2.4, v));
+  house.setBounce(bounceTrim);
+  vrConsole.state.bounce = bounceTrim;
+  vrConsole.draw();
+}
+
+const vrBrowser = new VRBrowser(scene, {
+  onPlayUrl: (url, label) => playVideo(url, label),
+});
+
+const panels = [vrConsole, vrBrowser];
+
+function panelHit(ctrl) {
+  _o.setFromMatrixPosition(ctrl.matrixWorld);
+  _d.set(0, 0, -1).applyQuaternion(ctrl.getWorldQuaternion(new THREE.Quaternion()));
+  panelRay.set(_o, _d);
+  let best = null;
+  for (const p of panels) {
+    if (!p.mesh.visible) continue;
+    const hits = panelRay.intersectObject(p.mesh, false);
+    if (hits.length && (!best || hits[0].distance < best.dist)) {
+      best = { panel: p, button: p.hitTest(hits[0].uv), dist: hits[0].distance };
+    }
+  }
+  return best;
+}
+const panelRay = new THREE.Raycaster();
+
+// Panels take the trigger first; otherwise it is a seat teleport.
+function onControllerSelect(c) {
+  const hit = panelHit(c);
+  if (hit) { hit.panel.press(hit.button); return; }
+  const seat = aimSeat(c);
+  if (seat) sit(seat);
+  else usePreset(presetIndex + 1);
+}
+
+// Dock the console to the left wrist so it is never between you and the
+// screen. Falls back to floating if no left controller reports in.
+const grips = [renderer.xr.getControllerGrip(0), renderer.xr.getControllerGrip(1)];
+for (const g of grips) rig.add(g);
+controllers.forEach((c, i) => c.addEventListener('connected', (e) => {
+  if (e.data?.handedness !== 'left') return;
+  grips[i].add(vrConsole.mesh);
+  vrConsole.mesh.position.set(0, 0.08, 0.14);
+  vrConsole.mesh.rotation.set(-1.0, 0, 0);
+  vrConsole.mesh.scale.setScalar(0.30);
+  vrConsole.worn = true;
+}));
+
+function undockConsole() {
+  if (!vrConsole.worn) return;
+  scene.add(vrConsole.mesh);
+  vrConsole.mesh.rotation.set(0, 0, 0);
+  vrConsole.mesh.scale.setScalar(1);
+  vrConsole.worn = false;
+}
+
+renderer.xr.addEventListener('sessionstart', () => {
+  vrConsole.mesh.visible = true;
+  if (!vrConsole.worn) vrConsole.placeInFront(camera);
+  // Nothing loaded yet: put the content browser straight in front of you.
+  if (!hasSource()) {
+    setTimeout(() => { vrBrowser.mesh.visible = true; vrBrowser.placeInFront(camera); }, 400);
+  }
+});
+renderer.xr.addEventListener('sessionend', () => {
+  undockConsole();
+  vrBrowser.mesh.visible = false;
+  vrConsole.mesh.visible = false;
+});
+
+videoEl.addEventListener('play', () => {
+  vrConsole.state.playing = true; vrConsole.draw();
+  // lights down, panel away
+  setTimeout(() => { if (!vrConsole.worn) vrConsole.mesh.visible = false; }, 600);
+});
+videoEl.addEventListener('pause', () => { vrConsole.state.playing = false; vrConsole.draw(); });
 
 // ---------------------------------------------------------------------- UI
 if ('xr' in navigator) {
@@ -221,6 +374,10 @@ if ('xr' in navigator) {
   document.body.appendChild(btn);
 }
 document.getElementById('seatBtn')?.addEventListener('click', () => usePreset(presetIndex + 1));
+document.getElementById('nuvioBtn')?.addEventListener('click', () => {
+  vrBrowser.mesh.visible = true;
+  vrBrowser.placeInFront(camera);
+});
 document.getElementById('videoInput')?.addEventListener('change', (e) => {
   if (e.target.files?.[0]) playVideo(e.target.files[0]);
 });
@@ -238,6 +395,8 @@ document.getElementById('exportBtn')?.addEventListener('click', async (e) => {
 window.addEventListener('keydown', (e) => {
   if (e.key >= '1' && e.key <= String(PRESETS.length)) usePreset(Number(e.key) - 1);
   if (e.key === 'v') usePreset(presetIndex + 1);
+  if (e.key === 'c') { vrConsole.toggle(camera); if (vrConsole.mesh.visible) vrBrowser.mesh.visible = false; }
+  if (e.key === 'b') { vrBrowser.toggle(camera); if (vrBrowser.mesh.visible && !vrConsole.worn) vrConsole.mesh.visible = false; }
 });
 
 const params = qs;
@@ -255,16 +414,23 @@ window.addEventListener('resize', () => {
 });
 
 const clock = new THREE.Clock();
+let statusAcc = 0;
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   film.update(dt);
   sampleVideo(dt);
   house.update();
 
+  audio.updateListener(camera);
+
   if (renderer.xr.isPresenting) {
+    // A controller aimed at a panel drives the panel, not the seat reticle.
+    const hovered = new Map();
     let shown = false;
     for (const c of controllers) {
       if (!c.visible) continue;
+      const ph = panelHit(c);
+      if (ph) { hovered.set(ph.panel, ph.button); continue; }
       const hit = aimSeat(c);
       if (hit && !shown) {
         reticle.position.set(hit.x, hit.y + 0.02, hit.z);
@@ -272,9 +438,21 @@ renderer.setAnimationLoop(() => {
         shown = true;
       }
     }
+    for (const p of panels) if (p.mesh.visible) p.setHover(hovered.get(p) || null);
     if (!shown) reticle.visible = false;
   } else {
     controls.update();
+  }
+
+  statusAcc += dt;
+  if (statusAcc > 1) {
+    statusAcc = 0;
+    if (hasSource() && videoEl.duration) {
+      const f = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+      vrConsole.state.time = `${f(videoEl.currentTime)} / ${isFinite(videoEl.duration) ? f(videoEl.duration) : 'live'}`;
+      vrConsole.state.audioMode = audio.ctx ? audio.mode : '';
+      vrConsole.draw();
+    }
   }
   renderer.render(scene, camera);
 });
@@ -286,6 +464,11 @@ if (statsEl) statsEl.textContent = info;
 
 window.__house = house;
 window.__film = film;
+window.__audio = audio;
+window.__console = vrConsole;
+window.__browser = vrBrowser;
+window.__playVideo = playVideo;
+window.__videoEl = videoEl;
 window.__camera = camera;
 window.__controls = controls;
 window.__renderer = renderer;
